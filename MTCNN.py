@@ -7,8 +7,8 @@ import numpy as np
 from util import *
 import cv2
 import time
-
-def create_mtcnn_net(image, mini_face, device, p_model_path=None, r_model_path=None, o_model_path=None):
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def create_mtcnn_net_facebank(image, mini_face, device, p_model_path=None, r_model_path=None, o_model_path=None):
 
     boxes = np.array([])
     landmarks = np.array([])
@@ -37,6 +37,33 @@ def create_mtcnn_net(image, mini_face, device, p_model_path=None, r_model_path=N
         bboxes, landmarks = detect_onet(onet, image, bboxes, device)
 
 
+    return bboxes, landmarks
+def load_rnet(r_model_path,device):
+    rnet = RNet().to(device)
+    rnet.load_state_dict(torch.load(r_model_path, map_location=lambda storage, loc: storage))
+    rnet.eval()
+    return rnet
+def load_pnet(p_model_path,device):
+    pnet = PNet().to(device)
+    pnet.load_state_dict(torch.load(p_model_path, map_location=lambda storage, loc: storage))
+    pnet.eval()
+    return pnet
+def load_onet(o_model_path,device):
+    onet = ONet().to(device)
+    onet.load_state_dict(torch.load(o_model_path, map_location=lambda storage, loc: storage))
+    onet.eval()
+    return onet
+def create_mtcnn_net(image, mini_face, device, pnet=None, rnet =None, onet=None,):
+
+    boxes = np.array([])
+    landmarks = np.array([])
+
+    if pnet is not None:
+        bboxes = detect_pnet(pnet, image, mini_face, device)
+    if rnet is not None:
+        bboxes = detect_rnet(rnet, image, bboxes, device)
+    if onet is not None:
+        bboxes, landmarks = detect_onet(onet, image, bboxes, device)
     return bboxes, landmarks
 
 def detect_pnet(pnet, image, min_face_size, device):

@@ -31,7 +31,7 @@ def transformation_from_points(points1, points2):
 def Face_alignment(img,default_square = True,landmarks = []):
     # face alignment -- similarity transformation
     faces = []
-    if landmarks != []:
+    if landmarks.size != 0:
         for i in range(landmarks.shape[0]):
             landmark = landmarks[i, :]
             landmark = landmark.reshape(2, 5).T

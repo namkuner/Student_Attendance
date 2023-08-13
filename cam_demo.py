@@ -16,14 +16,13 @@ from face_model import MobileFaceNet, l2_norm
 from facebank import load_facebank, prepare_facebank
 import cv2
 import time
-
+from anti_spoofing import predict
 from openpyxl import Workbook,load_workbook
 from openpyxl.styles import PatternFill, colors
 import os
 import datetime
 from openpyxl.utils import get_column_letter
 day = datetime.date.today()
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_cosine_distance(source_representation, test_representation):
@@ -167,7 +166,7 @@ def load_model(name_model):
     print('MobileFaceNet face detection model generated')
     detect_model.eval()
     return detect_model
-def inference(frame,targets, names, mssv,detect_model):
+def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
     scale = 0.5
     mini_face =30
     tta =True
@@ -176,16 +175,13 @@ def inference(frame,targets, names, mssv,detect_model):
     res=[]
     start_time = time.time()
     input = resize_image(frame, scale)
-
-    bboxes, landmarks = create_mtcnn_net(input, mini_face, device, p_model_path='Weights/pnet_Weights',
-                                         r_model_path='Weights/rnet_Weights',
-                                         o_model_path='Weights/onet_Weights')
-    if bboxes != []:
+    bboxes, landmarks = create_mtcnn_net(input, mini_face, device, pnet,
+                                        rnet,
+                                         onet)
+    if bboxes.size != 0:
         bboxes = bboxes / scale
         landmarks = landmarks / scale
-
     faces = Face_alignment(frame, default_square=True, landmarks=landmarks)
-
     embs = []
 
     test_transform = trans.Compose([
@@ -202,6 +198,7 @@ def inference(frame,targets, names, mssv,detect_model):
         else:
             embs.append(detect_model(test_transform(img).to(device).unsqueeze(0)))
     source_embs = torch.cat(embs)  # number of detected faces x 512
+    print("torch.norm(embs)", torch.norm(source_embs))
     diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
     dist = torch.sum(torch.pow(diff, 2), dim=1)  # number of detected faces x numer of target faces
     # print("dist", dist)
@@ -246,7 +243,114 @@ def inference(frame,targets, names, mssv,detect_model):
             draw.ellipse([(p[i] - 2.0, p[i + 5] - 2.0), (p[i] + 2.0, p[i + 5] + 2.0)], outline='blue')
     frame = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
     return frame, res,score_100
+def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device,face_spoofing):
+    scale = 0.5
+    mini_face =30
+    tta =True
+    threshold= 60
+    score_label =True
+    res=[]
+    start_time = time.time()
+    input = resize_image(frame, scale)
+    pre_box, pre_lank = create_mtcnn_net(input, mini_face, device, pnet,
+                                        rnet,
+                                         onet)
+    print("prebox",pre_box)
 
+
+    bboxes =[]
+    landmarks=[]
+    fake_face = []
+
+
+    for a in range(len(pre_box)):
+        bbox = pre_box[a][:-1]
+        prediction = predict(input,bbox,face_spoofing)
+        print("prediction", prediction)
+        if np.argmax(prediction)==1 or np.argmax(prediction)==0:
+            bboxes.append(pre_box[a])
+            landmarks.append(pre_lank[a])
+        elif np.argmax(prediction)==2 :
+            fake_face.append(pre_box[a])
+    bboxes = np.array(bboxes)
+    landmarks =np.array(landmarks)
+    fake_face =np.array(fake_face)
+    if fake_face.size!=0:
+        fake_face= fake_face/scale
+    if bboxes.size != 0:
+        bboxes = bboxes / scale
+        landmarks = landmarks / scale
+    print("trust",bboxes)
+    print("fake",fake_face)
+    faces = Face_alignment(frame, default_square=True, landmarks=landmarks)
+    embs = []
+
+    test_transform = trans.Compose([
+        trans.ToTensor(),
+        trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
+    if bboxes.size != 0:
+        for img in faces:
+            if tta:
+                mirror = cv2.flip(img, 1)
+                emb = detect_model(test_transform(img).to(device).unsqueeze(0))
+                emb_mirror = detect_model(test_transform(mirror).to(device).unsqueeze(0))
+                embs.append(l2_norm(emb + emb_mirror))
+            else:
+                embs.append(detect_model(test_transform(img).to(device).unsqueeze(0)))
+        source_embs = torch.cat(embs)  # number of detected faces x 512
+
+        diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
+        dist = torch.sum(torch.pow(diff, 2), dim=1)  # number of detected faces x numer of target faces
+        # print("dist", dist)
+        minimum, min_idx = torch.min(dist, dim=1)  # min and idx for each row
+
+        min_idx[minimum > ((threshold - 156) / (-80))] = -1  # if no match, set idx to -1
+        # cos_dis = calculate_cosine_distance(source_embs,targets)
+        # print(cos_dis)
+        # minimum, min_idx = torch.min(cos_dis, dim=1) # min and idx for each row
+        # print("min_idx",min_idx)
+        # min_idx[minimum > ((threshold-156)/(-80))] = -1  # if no match, set idx to -1
+        score = minimum
+        results = min_idx
+        for id in min_idx:
+            if id != -1:
+                res.append(mssv[id])
+        # print(score / torch.mean(dist, dim=1))
+        # convert distance to score dis(0.7,1.2) to score(100,60)
+        score_100 = torch.clamp(score * -80 + 156, 0, 100)
+    image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype('Weights/simkai.ttf', 30)
+
+    FPS = 1.0 / (time.time() - start_time)
+    draw.text((10, 10), 'FPS: {:.1f}'.format(FPS), fill=(0, 0, 0), font=font)
+    if bboxes.size != 0 :
+        for i, b in enumerate(bboxes):
+            draw.rectangle([(b[0], b[1]), (b[2], b[3])], outline='blue', width=5)
+            if score_label:
+                if score_100[i]>70:
+                    draw.text((int(b[0]), int(b[1] - 25)), names[results[i]] + ' score:{:.0f}'.format(score_100[i]),
+                          fill=(255, 255, 0), font=font)
+                else:
+                    # results[i]="unknow"
+                    draw.text((int(b[0]), int(b[1] - 25)), "unknow", fill=(255, 255, 0), font=font)
+            else:
+                draw.text((int(b[0]), int(b[1] - 25)), names[results[i]], fill=(255, 255, 0), font=font)
+                print(names[results[i]])
+
+        for p in landmarks:
+            for i in range(5):
+                draw.ellipse([(p[i] - 2.0, p[i + 5] - 2.0), (p[i] + 2.0, p[i + 5] + 2.0)], outline='blue')
+    if fake_face.size !=0:
+        for i, b in enumerate(fake_face):
+            draw.rectangle([(b[0], b[1]), (b[2], b[3])], outline='red', width=5)
+            draw.text((int(b[0]), int(b[1] - 25)), "fake face", fill=(255, 255, 0), font=font)
+        if bboxes.size==0:
+            frame = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+            return frame,None,None
+    frame = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+
+    return frame, res,score_100
 
 
 

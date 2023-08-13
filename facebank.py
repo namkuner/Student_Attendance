@@ -10,7 +10,7 @@ Generate the face bank
 import sys
 import os
 # sys.path.append(os.path.join(sys.path[0], 'MTCNN'))
-from MTCNN import create_mtcnn_net
+from MTCNN import create_mtcnn_net,create_mtcnn_net_facebank
 from align_trans import *
 import numpy as np
 from torchvision import transforms as trans
@@ -57,7 +57,7 @@ def create_excel(lop, dict_class):
             ws.column_dimensions[column_letter].width = adjusted_width
     wb.save(filename)
 # create_excel(imgs_path,ds_mssv,ds_ten)
-def prepare_facebank(path = 'D21CQCN01', tta = True):
+def prepare_facebank(path , tta = True):
     model = MobileFaceNet(512).to(device)  # embeding size is 512 (feature vector)
     model.load_state_dict(
         torch.load('Weights/MobileFace_Net', map_location=lambda storage, loc: storage))
@@ -75,7 +75,7 @@ def prepare_facebank(path = 'D21CQCN01', tta = True):
                 img = cv2.imread(image_path)
 
                 if img.shape != None:
-                    bboxes, landmarks = create_mtcnn_net(img, 20, device,
+                    bboxes, landmarks = create_mtcnn_net_facebank(img, 20, device,
                                                      p_model_path='Weights/pnet_Weights',
                                                      r_model_path='Weights/rnet_Weights',
                                                      o_model_path='Weights/onet_Weights')
@@ -182,7 +182,7 @@ def update_class(name_class,link_folder):
                 print(img)
                 print("imgsshpe",img.shape)
                 if img.shape != None:
-                    bboxes, landmarks = create_mtcnn_net(img, 20, device,
+                    bboxes, landmarks = create_mtcnn_net_facebank(img, 20, device,
                                                          p_model_path='Weights/pnet_Weights',
                                                          r_model_path='Weights/rnet_Weights',
                                                          o_model_path='Weights/onet_Weights')
