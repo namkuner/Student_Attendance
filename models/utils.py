@@ -1,10 +1,4 @@
-"""utils.py - Helper functions for building the model and for loading model parameters.
-   These helper functions are built to mirror those in the official TensorFlow implementation.
-"""
 
-# Author: lukemelas (github username)
-# Github repo: https://github.com/lukemelas/EfficientNet-PyTorch
-# With adjustments and added comments by workingcoder (github username).
 
 import re
 import math
@@ -15,28 +9,6 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils import model_zoo
 
-
-################################################################################
-### Help functions for model architecture
-################################################################################
-
-# GlobalParams and BlockArgs: Two namedtuples
-# Swish and MemoryEfficientSwish: Two implementations of the method
-# round_filters and round_repeats:
-#     Functions to calculate params for scaling model width and depth ! ! !
-# get_width_and_height_from_size and calculate_output_image_size
-# drop_connect: A structural design
-# get_same_padding_conv2d:
-#     Conv2dDynamicSamePadding
-#     Conv2dStaticSamePadding
-# get_same_padding_maxPool2d:
-#     MaxPool2dDynamicSamePadding
-#     MaxPool2dStaticSamePadding
-#     It's an additional function, not used in EfficientNet,
-#     but can be used in other model (such as EfficientDet).
-# Identity: An implementation of identical mapping
-
-# Parameters for the entire model (stem, all blocks, and head)
 GlobalParams = collections.namedtuple('GlobalParams', [
     'width_coefficient', 'depth_coefficient', 'image_size', 'dropout_rate',
     'num_classes', 'batch_norm_momentum', 'batch_norm_epsilon',

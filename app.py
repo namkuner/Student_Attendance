@@ -8,6 +8,7 @@ from PyQt5.QtGui import QColor
 import  sys
 from facebank import prepare_facebank
 from cam_demo import inference
+import shutil
 import openpyxl
 import os
 import torch
@@ -92,6 +93,8 @@ class capture_video(QThread):
 
     def run(self):
         self.cap = cv2.VideoCapture(0)
+        # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
+        # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
         while True:
             ret, cv_img = self.cap.read()
             if ret  :
@@ -131,6 +134,16 @@ class capture_video(QThread):
         self.thread_table.resizeColumnsToContents()
         self.thread_table.resizeRowsToContents()
 
+
+class LoadingDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Loading...")
+
+        layout = QVBoxLayout()
+        self.label = QLabel("Loading...", self)
+        layout.addWidget(self.label)
+        self.setLayout(layout)
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -143,14 +156,16 @@ class MainWindow(QMainWindow):
         if not os.path.exists("class.txt"):
             with open("class.txt", "w") as file:
                 pass
+        if not os.path.exists("Config"):
+            os.makedirs("Config")
         options = self.load_options_from_file("class.txt")
         self.page_class_chonlop.addItems(options)
         self.page_diemdanh_chonlop.addItems(options)
-        self.page_class_sumbit_chonlop.clicked.connect(self.submit_options)
+        self.page_class_sumbit_chonlop.clicked.connect(self.display_class)
         self.page_diemdanh_stop.clicked.connect(self.stop_capture_video)
         self.page_diemdanh_start.clicked.connect(self.start_camera)
         self.page_class_themsinhvien.clicked.connect(self.add_student)
-        self.page_class_sua.clicked.connect(self.read_table_data)
+        self.page_class_update.clicked.connect(self.update_class)
         self.thread = {}
 
         # test right click
@@ -160,48 +175,64 @@ class MainWindow(QMainWindow):
         self.page_class_table.verticalHeader().customContextMenuRequested.connect(self.show_header_context_menu)
         self.page_class_xoa.clicked.connect(self.on_button_clicked)
         self.page_class_tongket.clicked.connect(self.open_form)
+        self.page_class_chuyencan.clicked.connect(self.chuyen_can)
+    def chuyen_can(self):
+        try:
+            header = self.get_table_header()
+            diem_danh =[]
+            for name in header:
+                if is_valid_time(name):
+                    diem_danh.append(name)
+            print(header)
+            form = MyForm(["Trừ mỗi buổi vắng"])
+            submitted_values = form.exec()  # Chạy form và chờ đến khi nó đóng
+            if submitted_values == QDialog.Accepted:  # Nếu người dùng ấn "Submit"
+                value = form.submit_values()
+            value = int(value[0])
+            print(value)
+            selected_option = self.page_class_chonlop.currentText()
+            my_dict = info_class(selected_option)
+            key_mydict = [key for key in my_dict.keys()]
+            for key in key_mydict:
+                dem = 0
+                for col in diem_danh:
+                    if my_dict[key][col]=="0":
+                        dem+=1
+                print(dem)
+                if (10 - dem*value) >0 :
+                    my_dict[key]["Chuyên cần"] = 10 - dem*value
+                else:
+                    my_dict[key]["Chuyên cần"] = 0
+            save_facebank(my_dict,selected_option)
+        except Exception as e:
+            print(e)
     def open_form(self):
         try :
             header = self.get_table_header()
             head = []
-            diem_danh = []
-            head.append("Điểm danh")
+            head.append("Chuyên cần")
             for name in header:
-                if not is_valid_time(name) and name != "Họ và Tên" and name != "MSSV" and name != "Tổng kết":
+                if not is_valid_time(name) and name != "Họ và Tên" and name != "MSSV" and name != "Tổng kết" and name!="Chuyên cần":
                     head.append(name)
-                if is_valid_time(name):
-                    diem_danh.append(name)
             print(header)
             form = MyForm(head)
             submitted_values = form.exec()  # Chạy form và chờ đến khi nó đóng
-
             if submitted_values == QDialog.Accepted:  # Nếu người dùng ấn "Submit"
                 value = form.submit_values()
                 print(value)
-            a = head.index("Điểm danh")
-            max_point_attendance = int(value[a]) / 100
 
-            all_day = len(diem_danh)
-            point_perday = max_point_attendance / all_day
             selected_option = self.page_class_chonlop.currentText()
             my_dict = info_class(selected_option)
             diem_dict = dict(zip(head, value))
 
             for key in my_dict.keys():
-                dem = 0
-                for day in diem_danh:
-                    if my_dict[key][day] == "1":
-                        dem += 1
-                point_attendance = dem * point_perday
-                sum_point = 0
-                sum_point += point_attendance
-                for k in diem_dict.keys():
-                    if k != "Điểm danh":
-                        if my_dict[key][k] != '':
-                            print(my_dict[key][k])
-                            sum_point += (float(diem_dict[k]) * float(my_dict[key][k]) / 100)
+                dtb =0
+                for col in diem_dict.keys():
+                    if my_dict[key][col] =="":
+                        my_dict[key][col] =0
+                    dtb += float(diem_dict[col])*float(my_dict[key][col])/100.0
+                my_dict[key]["Tổng kết"] = dtb
 
-                my_dict[key]["Tổng kết"] = sum_point
             save_facebank(my_dict, selected_option)
             self.repaint()
         except Exception as e:
@@ -217,26 +248,30 @@ class MainWindow(QMainWindow):
 
         # Lấy lựa chọn của người dùng
         choice = message.exec_()
-
+        try :
         # Nếu người dùng chọn "Có", hãy xóa dữ liệu
-        if choice == QMessageBox.Yes:
-            # Xóa dữ liệu
-            with open('class.txt', 'r') as file:
-                lines = file.readlines()
-            for line in lines:
-                if selected_option in line:
-                    lines.remove(line)
-            path = selected_option + "_config"
-            try:
-                os.rmdir(path)
-            except FileNotFoundError:
-                print(f"Thư mục {path} không tồn tại.")
+            if choice == QMessageBox.Yes:
+                # Xóa dữ liệu
+                with open('class.txt', 'r') as file:
+                    lines = file.readlines()
+                for line in lines:
+                    if selected_option in line:
+                        lines.remove(line)
+                path = os.path.join("/Config",selected_option+".pkl")
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    print(f"Thư mục {path} không tồn tại.")
 
-            with open('class.txt', 'w') as file:
-                file.writelines(lines)
+                with open('class.txt', 'w') as file:
+                    file.writelines(lines)
+
         # Nếu người dùng chọn "Không", hãy bỏ qua
-        else:
-            print("Dữ liệu đã không bị xóa.")
+            else:
+                print("Dữ liệu đã không bị xóa.")
+        except Exception as e:
+            print(e)
+        self.repaint()
     def show_header_context_menu(self, position):
         header = self.sender()
         index = header.logicalIndexAt(position)
@@ -254,7 +289,7 @@ class MainWindow(QMainWindow):
             menu.addAction(delete_action)
 
         menu.exec_(header.viewport().mapToGlobal(position))
-        self.read_table_data()
+        self.update_class()
     def add_column(self, index):
         header_label, ok = QInputDialog.getText(self, "Thêm cột", "Nhập tiêu đề cột:")
 
@@ -274,7 +309,7 @@ class MainWindow(QMainWindow):
 
     def delete_row(self, row):
         self.page_class_table.removeRow(row)
-    def read_table_data(self):
+    def update_class(self):
         try:
             selected_option = self.page_class_chonlop.currentText()
             dict_class =info_class(selected_option)
@@ -309,6 +344,7 @@ class MainWindow(QMainWindow):
                         dict_class[mssv].pop(key)
 
             save_facebank(dict_class,selected_option)
+            self.display_class()
         except Exception as e:
             print(e)
 
@@ -329,7 +365,12 @@ class MainWindow(QMainWindow):
             selected_option = self.page_class_chonlop.currentText()
             folder_path = QFileDialog.getExistingDirectory(None, "Chọn thư mục", "/")
             print(selected_option)
-            update_class(selected_option,folder_path)
+            er = update_class(selected_option,folder_path)
+            if len(er)!=0:
+                self.image_error1(er)
+            else:
+                self.image_error0(er)
+            self.display_class()
             # self.repaint()
         except Exception as e:
             print(e)
@@ -396,7 +437,7 @@ class MainWindow(QMainWindow):
         # Hiển thị cửa sổ thông báo và chờ người dùng đóng
         msg_box.exec_()
 
-    def submit_options(self):
+    def display_class(self):
         # Khởi tạo layout chính
         selected_option = self.page_class_chonlop.currentText()
         # TODO: Send the selected option to the server
@@ -469,19 +510,25 @@ class MainWindow(QMainWindow):
         self.start_video_thread(lop=selected_option)
 
     def link_class(self):
-        folder_path = QFileDialog.getExistingDirectory(None, "Chọn thư mục", "/")
-        print("Đường dẫn được chọn:", folder_path)
-        er = prepare_facebank(folder_path)
-        self.repaint()
-        if len(er)!=0:
-            self.image_error1(er)
-        else:
-            self.image_error0(er)
-        print(er)
-        options = self.load_options_from_file("class.txt")
-        self.page_class_chonlop.addItems(options)
-        self.page_diemdanh_chonlop.addItems(options)
-        self.repaint()
+        try :
+            folder_path = QFileDialog.getExistingDirectory(None, "Chọn thư mục", "/")
+            if folder_path == None:
+                self.error_chonlop()
+            print("Đường dẫn được chọn:", folder_path)
+            er = prepare_facebank(folder_path)
+            self.repaint()
+            if len(er)!=0:
+                self.image_error1(er)
+            else:
+                self.image_error0(er)
+            print(er)
+            options = self.load_options_from_file("class.txt")
+            self.page_class_chonlop.addItems(options)
+            self.page_diemdanh_chonlop.addItems(options)
+            # self.submit_options()
+            self.update()
+        except Exception as e:
+            print(e)
 
     def show_home_page(self):
         # Hiển thị trang Home
@@ -500,6 +547,7 @@ window = QtWidgets.QStackedWidget()
 main_f = MainWindow()
 # window.setCentralWidget(main_f)
 window.addWidget(main_f)
+window.setWindowTitle("Student Attendance")
 window.setCurrentIndex(0)
 window.showMaximized()
 app.exec_()

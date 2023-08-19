@@ -69,34 +69,33 @@ def prepare_facebank(path , tta = True):
     embs = []
     error_image =[]
     for files in list_dir:
-        if "jpg" in files :
-            image_path = os.path.join(path, files)
-            try :
-                img = cv2.imread(image_path)
+        image_path = os.path.join(path, files)
+        try :
+            img = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 
-                if img.shape != None:
-                    bboxes, landmarks = create_mtcnn_net_facebank(img, 20, device,
-                                                     p_model_path='Weights/pnet_Weights',
-                                                     r_model_path='Weights/rnet_Weights',
-                                                     o_model_path='Weights/onet_Weights')
+            if img.shape != None:
+                bboxes, landmarks = create_mtcnn_net_facebank(img, 20, device,
+                                                 p_model_path='Weights/pnet_Weights',
+                                                 r_model_path='Weights/rnet_Weights',
+                                                 o_model_path='Weights/onet_Weights')
 
-                img = Face_alignment(img, default_square=True, landmarks=landmarks)
+            img = Face_alignment(img, default_square=True, landmarks=landmarks)
 
-                with torch.no_grad():
-                    if tta:
-                        mirror = cv2.flip(img[0], 1)
-                        emb = model(test_transform(img[0]).to(device).unsqueeze(0))
-                        emb_mirror = model(test_transform(mirror).to(device).unsqueeze(0))
-                        res =l2_norm(emb + emb_mirror)
-                    else:
-                        res =model(test_transform(img[0]).to(device).unsqueeze(0))
-                name=files.split("-")[1].split(".")[0]
-                mssv = files.split("-")[0]
-                # print("res",res)
-                info[mssv]= {"name":name,"emb":res}
-            except Exception as e:
-                print(e)
-                error_image.append(image_path)
+            with torch.no_grad():
+                if tta:
+                    mirror = cv2.flip(img[0], 1)
+                    emb = model(test_transform(img[0]).to(device).unsqueeze(0))
+                    emb_mirror = model(test_transform(mirror).to(device).unsqueeze(0))
+                    res =l2_norm(emb + emb_mirror)
+                else:
+                    res =model(test_transform(img[0]).to(device).unsqueeze(0))
+            name=files.split("-")[1].split(".")[0]
+            mssv = files.split("-")[0]
+            # print("res",res)
+            info[mssv]= {"name":name,"emb":res}
+        except Exception as e:
+            print(e)
+            error_image.append(image_path)
     #giảm chiều
 
 
@@ -107,7 +106,8 @@ def prepare_facebank(path , tta = True):
     # lấy tên của  lớp
     folder_name = os.path.basename(path)
     # save VD :D21CQCN01_emb_mobile.pth file  nhúng
-    current_path = os.path.join(current_path, folder_name + "_config")
+    current_path = os.path.join(current_path,  "Config")
+
     if not os.path.exists(current_path):
         os.mkdir(current_path)
     save_facebank(info,folder_name)
@@ -124,14 +124,14 @@ def save_class(class_name):
 def save_facebank(data,name_class):
     current_path = os.path.abspath(__file__)
     current_path = os.path.dirname(current_path)
-    current_path = os.path.join(current_path,name_class+"_config")
-    file_path =os.path.join(current_path,"dict_class.pkl")
+    current_path = os.path.join(current_path,"Config")
+    file_path =os.path.join(current_path, name_class+".pkl")
     with open(file_path, "wb") as file:
         pickle.dump(data, file)
 
 def load_facebank(name_class):
-    data_path = Path(name_class+"_config")
-    data_path = os.path.join(data_path,"dict_class.pkl")
+    data_path = Path("Config")
+    data_path = os.path.join(data_path,name_class+".pkl")
     with open(data_path, "rb") as file:
         loaded_dict = pickle.load(file)
     names = []
@@ -154,8 +154,8 @@ def load_facebank(name_class):
     return stacked_values,names,keys
 
 def info_class(name_class):
-    data_path = Path(name_class+"_config")
-    data_path = os.path.join(data_path,"dict_class.pkl")
+    data_path = Path("Config")
+    data_path = os.path.join(data_path,name_class+".pkl")
     with open(data_path, "rb") as file:
         loaded_dict = pickle.load(file)
     return loaded_dict
@@ -174,39 +174,39 @@ def update_class(name_class,link_folder):
     print(list_dir)
     error_image = []
     for files in list_dir:
-        if "jpg" in files:
-            image_path = os.path.join(link_folder, files)
-            print("image_path",image_path)
-            try:
-                img = cv2.imread(image_path)
-                print(img)
-                print("imgsshpe",img.shape)
-                if img.shape != None:
-                    bboxes, landmarks = create_mtcnn_net_facebank(img, 20, device,
-                                                         p_model_path='Weights/pnet_Weights',
-                                                         r_model_path='Weights/rnet_Weights',
-                                                         o_model_path='Weights/onet_Weights')
+        image_path = os.path.join(link_folder, files)
+        print("image_path",image_path)
+        try:
+            img = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+            print(img)
+            print("imgsshpe",img.shape)
+            if img.shape != None:
+                bboxes, landmarks = create_mtcnn_net_facebank(img, 20, device,
+                                                     p_model_path='Weights/pnet_Weights',
+                                                     r_model_path='Weights/rnet_Weights',
+                                                     o_model_path='Weights/onet_Weights')
 
-                img = Face_alignment(img, default_square=True, landmarks=landmarks)
+            img = Face_alignment(img, default_square=True, landmarks=landmarks)
 
-                with torch.no_grad():
-                    if tta:
-                        mirror = cv2.flip(img[0], 1)
-                        emb = model(test_transform(img[0]).to(device).unsqueeze(0))
-                        emb_mirror = model(test_transform(mirror).to(device).unsqueeze(0))
-                        res =l2_norm(emb + emb_mirror)
-                    else:
-                        res =model(test_transform(img[0]).to(device).unsqueeze(0))
-                name = files.split("-")[1].split(".")[0]
-                mssv = files.split("-")[0]
-                loaded_dict[mssv] = {"name": name, "emb": res}
-                for date in name_header:
-                    loaded_dict[mssv][date] = 0
-                save_facebank(loaded_dict,name_class)
+            with torch.no_grad():
+                if tta:
+                    mirror = cv2.flip(img[0], 1)
+                    emb = model(test_transform(img[0]).to(device).unsqueeze(0))
+                    emb_mirror = model(test_transform(mirror).to(device).unsqueeze(0))
+                    res =l2_norm(emb + emb_mirror)
+                else:
+                    res =model(test_transform(img[0]).to(device).unsqueeze(0))
+            name = files.split("-")[1].split(".")[0]
+            mssv = files.split("-")[0]
+            loaded_dict[mssv] = {"name": name, "emb": res}
+            for date in name_header:
+                loaded_dict[mssv][date] = 0
+            save_facebank(loaded_dict,name_class)
 
-            except Exception as e:
-                print(e)
-                error_image.append(image_path)
+        except Exception as e:
+            print(e)
+            error_image.append(image_path)
+    return error_image
 def save_attendance(day, list_diemdanh, list_mssv, lop):
     dict_class = info_class(lop)
     for mssv  in list_mssv:

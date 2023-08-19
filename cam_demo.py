@@ -23,8 +23,9 @@ import os
 import datetime
 from openpyxl.utils import get_column_letter
 day = datetime.date.today()
-
-
+import torch.nn.functional as F
+def cos_distance(vector1,vectors_set):
+    return 1 - F.cosine_similarity(vector1, vectors_set)
 def calculate_cosine_distance(source_representation, test_representation):
     source_representation = torch.tensor(source_representation)  # shape: (2, 512)
     test_representation = torch.tensor(test_representation)  # shape: (40, 512)
@@ -103,12 +104,14 @@ def attendance(lop="D21CQCN01"):
                     else:
                         embs.append(detect_model(test_transform(img).to(device).unsqueeze(0)))
                 source_embs = torch.cat(embs)  # number of detected faces x 512
-                print(source_embs.shape)
+
                 print(targets.shape)
                 diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0) # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
                 dist = torch.sum(torch.pow(diff, 2), dim=1) # number of detected faces x numer of target faces
                 print("dist",dist)
-                minimum, min_idx = torch.min(dist, dim=1) # min and idx for each row
+                cos = cos_distance(source_embs,targets)
+                # print("cos",cos)
+                # minimum, min_idx = torch.min(dist, dim=1) # min and idx for each row
                 print("min_idx",min_idx)
                 min_idx[minimum > ((threshold-156)/(-80))] = -1  # if no match, set idx to -1
                 # cos_dis = calculate_cosine_distance(source_embs,targets)
@@ -168,7 +171,7 @@ def load_model(name_model):
     return detect_model
 def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
     scale = 0.5
-    mini_face =30
+    mini_face =50
     tta =True
     threshold= 60
     score_label =True
@@ -198,18 +201,21 @@ def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
         else:
             embs.append(detect_model(test_transform(img).to(device).unsqueeze(0)))
     source_embs = torch.cat(embs)  # number of detected faces x 512
-    print("torch.norm(embs)", torch.norm(source_embs))
+
     diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
     dist = torch.sum(torch.pow(diff, 2), dim=1)  # number of detected faces x numer of target faces
+    print("educlid",dist)
     # print("dist", dist)
     minimum, min_idx = torch.min(dist, dim=1)  # min and idx for each row
-
+    print("minimum",minimum)
     min_idx[minimum > ((threshold - 156) / (-80))] = -1  # if no match, set idx to -1
     # cos_dis = calculate_cosine_distance(source_embs,targets)
     # print(cos_dis)
     # minimum, min_idx = torch.min(cos_dis, dim=1) # min and idx for each row
     # print("min_idx",min_idx)
     # min_idx[minimum > ((threshold-156)/(-80))] = -1  # if no match, set idx to -1
+    # similarity_scores = F.cosine_similarity(vector1, vectors_set)
+
     score = minimum
     results = min_idx
     for id in min_idx:
@@ -220,7 +226,7 @@ def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
     score_100 = torch.clamp(score * -80 + 156, 0, 100)
     image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype('Weights/simkai.ttf', 30)
+    font = ImageFont.truetype('Weights/times.ttf', 30)
 
     FPS = 1.0 / (time.time() - start_time)
     draw.text((10, 10), 'FPS: {:.1f}'.format(FPS), fill=(0, 0, 0), font=font)
@@ -255,7 +261,6 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
     pre_box, pre_lank = create_mtcnn_net(input, mini_face, device, pnet,
                                         rnet,
                                          onet)
-    print("prebox",pre_box)
 
 
     bboxes =[]
@@ -266,7 +271,6 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
     for a in range(len(pre_box)):
         bbox = pre_box[a][:-1]
         prediction = predict(input,bbox,face_spoofing)
-        print("prediction", prediction)
         if np.argmax(prediction)==1 or np.argmax(prediction)==0:
             bboxes.append(pre_box[a])
             landmarks.append(pre_lank[a])
@@ -280,8 +284,6 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
     if bboxes.size != 0:
         bboxes = bboxes / scale
         landmarks = landmarks / scale
-    print("trust",bboxes)
-    print("fake",fake_face)
     faces = Face_alignment(frame, default_square=True, landmarks=landmarks)
     embs = []
 
@@ -320,7 +322,7 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
         score_100 = torch.clamp(score * -80 + 156, 0, 100)
     image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype('Weights/simkai.ttf', 30)
+    font = ImageFont.truetype('Weights/times.ttf', 30)
 
     FPS = 1.0 / (time.time() - start_time)
     draw.text((10, 10), 'FPS: {:.1f}'.format(FPS), fill=(0, 0, 0), font=font)
@@ -331,6 +333,8 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
                 if score_100[i]>70:
                     draw.text((int(b[0]), int(b[1] - 25)), names[results[i]] + ' score:{:.0f}'.format(score_100[i]),
                           fill=(255, 255, 0), font=font)
+                    print(names[results[i]])
+                    print(dist)
                 else:
                     # results[i]="unknow"
                     draw.text((int(b[0]), int(b[1] - 25)), "unknow", fill=(255, 255, 0), font=font)
