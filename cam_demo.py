@@ -167,6 +167,7 @@ def load_model(name_model):
     #lấy weight
     detect_model.load_state_dict(torch.load('Weights/MobileFace_Net', map_location=lambda storage, loc: storage))
     print('MobileFaceNet face detection model generated')
+    detect_model =detect_model.to(device)
     detect_model.eval()
     return detect_model
 def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
@@ -190,9 +191,7 @@ def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
     test_transform = trans.Compose([
         trans.ToTensor(),
         trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
-
     for img in faces:
-
         if tta:
             mirror = cv2.flip(img, 1)
             emb = detect_model(test_transform(img).to(device).unsqueeze(0))
@@ -200,10 +199,13 @@ def inference(frame,targets, names, mssv,detect_model,pnet,rnet,onet,device):
             embs.append(l2_norm(emb + emb_mirror))
         else:
             embs.append(detect_model(test_transform(img).to(device).unsqueeze(0)))
-    source_embs = torch.cat(embs)  # number of detected faces x 512
 
-    diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
+    source_embs = torch.cat(embs).to(device)  # number of detected faces x 512
+    print("hello1")
+    diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0).to(device)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
+    print("hello0")
     dist = torch.sum(torch.pow(diff, 2), dim=1)  # number of detected faces x numer of target faces
+
     print("educlid",dist)
     # print("dist", dist)
     minimum, min_idx = torch.min(dist, dim=1)  # min and idx for each row
@@ -271,11 +273,14 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
     for a in range(len(pre_box)):
         bbox = pre_box[a][:-1]
         prediction = predict(input,bbox,face_spoofing)
-        if np.argmax(prediction)==1 or np.argmax(prediction)==0:
+
+        if np.argmax(prediction)==1 or (prediction[0][0] <0.2  and prediction[0][2] <0.2) :
             bboxes.append(pre_box[a])
             landmarks.append(pre_lank[a])
-        elif np.argmax(prediction)==2 :
+            print("real prediction", prediction)
+        else :
             fake_face.append(pre_box[a])
+            print("fake prediction", prediction)
     bboxes = np.array(bboxes)
     landmarks =np.array(landmarks)
     fake_face =np.array(fake_face)
@@ -301,7 +306,7 @@ def detec_with_face_spoofing(frame,targets, names, mssv,detect_model,pnet,rnet,o
                 embs.append(detect_model(test_transform(img).to(device).unsqueeze(0)))
         source_embs = torch.cat(embs)  # number of detected faces x 512
 
-        diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
+        diff = source_embs.unsqueeze(-1) - targets.transpose(1, 0).unsqueeze(0).to(device)  # i.e. 3 x 512 x 1 - 1 x 512 x 2 = 3 x 512 x 2
         dist = torch.sum(torch.pow(diff, 2), dim=1)  # number of detected faces x numer of target faces
         # print("dist", dist)
         minimum, min_idx = torch.min(dist, dim=1)  # min and idx for each row

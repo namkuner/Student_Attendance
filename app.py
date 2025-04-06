@@ -9,7 +9,6 @@ import  sys
 from facebank import prepare_facebank
 from cam_demo import inference
 import shutil
-import openpyxl
 import os
 import torch
 from torchvision import transforms as trans
@@ -75,8 +74,9 @@ class capture_video(QThread):
         self.index =index
         print("start threading",self.index)
         super(capture_video,self).__init__()
-        self.model = load_model(name_model)
+
         self.device =torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.model = load_model(name_model)
         self.rnet = load_rnet(r_model_path='Weights/rnet_Weights',device= self.device)
         self.pnet =load_pnet(p_model_path='Weights/pnet_Weights',device=self.device)
         self.onet =load_onet(o_model_path='Weights/onet_Weights',device=self.device)
@@ -90,6 +90,7 @@ class capture_video(QThread):
         self.cap =None
         self.thread_table = table
         self.name_diemdanh=[]
+
 
     def run(self):
         self.cap = cv2.VideoCapture(0)
