@@ -5,25 +5,33 @@
 
 ## 🎬 Điểm danh ở lớp chuyên đề AI của Naver 
 
-[Xem video demo trực tiếp]([./demo_nhanh.mp4](https://www.youtube.com/watch?v=QMc43knlL_Q))
+[Xem video qua youtube trực tiếp](https://www.youtube.com/watch?v=QMc43knlL_Q)
 
 ---
 
 ## 🎬 Demo nhanh
 
-<video src="demo_nhanh.mp4" width="720" controls></video>
+<video width="600" controls>
+  <source src="demo_nhanh.mp4" type="video/mp4">
+  Trình duyệt của bạn không hỗ trợ thẻ video.
+</video>
 
 ---
 
 ## 📖 Hướng Dẫn Sử Dụng
 
-<video src="huong_dan_su_dung.mp4" width="720" controls></video>
+[Xem video qua youtube trực tiếp](https://www.youtube.com/watch?v=Gz43lrdEPEk)
 
 ---
 
 ## 🧠 Link mô hình đã train
 
-👉 [Xem kết quả mô hình đã huấn luyện trên GitHub](https://github.com/yourusername/facerecognition-model)
+👉 [Xem kết quả mô hình đã huấn luyện trên GitHub](https://github.com/namkuner/Distributed_GhostFaceNet_Train_on_Glint360k)
+---
+
+## 🧠 Link tải phần mềm và cài đặt
+
+👉 [download](https://drive.google.com/file/d/1KXzdPSi0JuuI-WpjziLvGTwqjGK138yA/view?usp=sharing)
 
 ...
 
