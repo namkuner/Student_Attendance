@@ -5,33 +5,30 @@
 
 ## 🎬 Điểm danh ở lớp chuyên đề AI của Naver 
 
-[Xem video qua youtube trực tiếp](https://www.youtube.com/watch?v=QMc43knlL_Q)
-
+[![Xem video qua youtube trực tiếp](lop_AI.png)](https://www.youtube.com/watch?v=QMc43knlL_Q)
 ---
 
 ## 🎬 Demo nhanh
 
-<video width="600" controls>
-  <source src="demo_nhanh.mp4" type="video/mp4">
-  Trình duyệt của bạn không hỗ trợ thẻ video.
-</video>
 
+[![Xem video qua facebook](demonhanh.png)](https://www.facebook.com/100007537876809/videos/pcb.3445721462355749/1952973655073044)
 ---
 
 ## 📖 Hướng Dẫn Sử Dụng
 
-[Xem video qua youtube trực tiếp](https://www.youtube.com/watch?v=Gz43lrdEPEk)
+[![Xem video qua youtube](caidat.png)](https://www.youtube.com/watch?v=Gz43lrdEPEk)
 
 ---
 
-## 🧠 Link mô hình đã train
+## 🧠 Train model với dataset Glint360k hơn 17 triệu ảnh
 
-👉 [Xem kết quả mô hình đã huấn luyện trên GitHub](https://github.com/namkuner/Distributed_GhostFaceNet_Train_on_Glint360k)
+[![Xem kết quả mô hình đã huấn luyện trên Glink360k](train_glink360k.png)](https://wandb.ai/namkunerr/Glint_360k/reports/GhostFaceNets_Glint360k--Vmlldzo4ODYyOTUx?accessToken=0d2xj193yx4yw7qmahnqb3twm073ix9igheydzii6jat3ymjlaljw2nhau5795ho)
+[Github train Ghostfacenets](https://github.com/namkuner/Distributed_GhostFaceNet_Train_on_Glint360k)
 ---
 
 ## 🧠 Link tải phần mềm và cài đặt
 
-👉 [download](https://drive.google.com/file/d/1KXzdPSi0JuuI-WpjziLvGTwqjGK138yA/view?usp=sharing)
+[Download phần mềm](https://drive.google.com/file/d/1KXzdPSi0JuuI-WpjziLvGTwqjGK138yA/view?usp=sharing)
 
 ...
 
