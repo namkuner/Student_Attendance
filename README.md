@@ -6,7 +6,7 @@
 
 ## 🎬 Điểm danh ở lớp chuyên đề AI của Naver 
 
-[Xem video demo trực tiếp](./thu_nghiem_lop_chuyen_de_AI.mp4)
+[Xem video demo trực tiếp](./demo_nhanh.mp4)
 
 ---
 
