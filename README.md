@@ -1,12 +1,11 @@
 # 📷 Ứng dụng Điểm Danh Sinh Viên Bằng Nhận Diện Khuôn Mặt
 
-Ứng dụng giúp giảng viên điểm danh sinh viên tự động qua camera laptop bằng nhận diện khuôn mặt. Sử dụng công nghệ học sâu kết hợp OpenCV để phát hiện và nhận diện khuôn mặt chính xác.
-
+Ứng dụng giúp giảng viên điểm danh sinh viên tự động qua camera laptop bằng nhận diện khuôn mặt. Sử dụng một số model tiên tiến hiện tại, nhẹ và chạy realtime được ở trên các laptop.
 ---
 
 ## 🎬 Điểm danh ở lớp chuyên đề AI của Naver 
 
-[Xem video demo trực tiếp](./demo_nhanh.mp4)
+[Xem video demo trực tiếp]([./demo_nhanh.mp4](https://www.youtube.com/watch?v=QMc43knlL_Q))
 
 ---
 
