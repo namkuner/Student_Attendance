@@ -11,7 +11,10 @@
 ## 🎬 Demo nhanh
 
 
-[![Xem video qua facebook](demonhanh.png)](https://www.facebook.com/100007537876809/videos/pcb.3445721462355749/1952973655073044)
+
+https://github.com/user-attachments/assets/4817743f-f5c2-40ee-afaf-a1d51b08a471
+
+
 ---
 
 ## 📖 Hướng Dẫn Sử Dụng
