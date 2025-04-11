@@ -28,7 +28,7 @@ https://github.com/user-attachments/assets/4817743f-f5c2-40ee-afaf-a1d51b08a471
 ## So sánh (Có thể xem ở Wandb hoặc train.log)
 |   Tập dữ liệu     | LFW            | CFP-FP         | CFP-FF
 |-------------------|----------------|----------------|----------------|
-| Kết quả của tôi   | 99.800         | 98.014         | 99.871         |
+| Kết quả của tôi   | 99.800         | 98.014         | 99.886         |
 | Của paper gốc     | 99.717         | 93.071         | 96.55          |
 
 [![Paper gốc]](https://github.com/HamadYA/GhostFaceNets)
